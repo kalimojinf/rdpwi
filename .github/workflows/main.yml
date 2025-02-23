@@ -5,67 +5,63 @@ on: [push, workflow_dispatch]
 jobs:
   build:
 
-    runs-on: windows-latest
+    runs-on: macos-latest
 
     steps:
     - name: Download Tailscale
       run: |
-        $url = "https://pkgs.tailscale.com/stable/tailscale-setup-full-1.80.2.exe"
-        $output = "tailscale-setup-full-1.80.2.exe"
-        Write-Host "Downloading Tailscale from $url..."
-        Invoke-WebRequest -Uri $url -OutFile $output
-        if (-Not (Test-Path $output)) {
-          throw "Failed to download Tailscale installer."
-        }
-        Write-Host "Downloaded Tailscale installer successfully."
-        Get-ChildItem -Path .
+        url="https://pkgs.tailscale.com/stable/Tailscale.pkg"
+        output="Tailscale.pkg"
+        echo "Downloading Tailscale from $url..."
+        curl -fsSL "$url" -o "$output"
+        if [ ! -f "$output" ]; then
+          echo "Failed to download Tailscale installer."
+          exit 1
+        fi
+        echo "Downloaded Tailscale installer successfully."
+        ls -la
+
     - name: Install Tailscale
       run: |
-        $installerPath = "tailscale-setup-full-1.80.2.exe"
-        if (-Not (Test-Path $installerPath)) {
-          throw "Tailscale installer not found."
-        }
-        Write-Host "Running Tailscale installation..."
-        $logFilePath = "D:\a\_temp\tailscale-install.log"
-        New-Item -ItemType Directory -Force -Path "D:\a\_temp"
-        Start-Process -FilePath $installerPath -ArgumentList "/S /LOG=$logFilePath" -Wait
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "Tailscale installation failed. Checking log file for details..."
-          if (Test-Path $logFilePath) {
-            Get-Content $logFilePath
-          } else {
-            Write-Host "Log file not found at $logFilePath"
-          }
-          throw "Tailscale installation failed."
-        }
-    - name: Verify Tailscale Installation
-      run: |
-        Write-Host "Verifying Tailscale installation..."
-        if (-Not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
-          throw "Tailscale is not installed correctly."
-        }
-        Write-Host "Tailscale is installed successfully."
+        installer -pkg Tailscale.pkg -target /
+
     - name: Auth Tailscale
       run: |
-        $authKey = $Env:TAILSCALE_AUTH_KEY
-        Write-Host "Authenticating Tailscale with key: $authKey..."
-        tailscale up --authkey=$authKey
-        if ($LASTEXITCODE -ne 0) {
-          throw "Tailscale authentication failed."
-        }
+        auth_key="${TAILSCALE_AUTH_KEY}"
+        echo "Authenticating Tailscale with key: $auth_key..."
+        sudo tailscale up --authkey="$auth_key"
+        if [ $? -ne 0 ]; then
+          echo "Tailscale authentication failed."
+          exit 1
+        fi
       env:
         TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+
     - name: Enable Remote Desktop
       run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+        echo "Enabling Remote Desktop..."
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -users runneradmin -privs -all -restart -agent -menu -on
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all -restart -agent -menu -on
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -firewall -on
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -firewall -add -ports -TCP 5900
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -access -on -users runneradmin -privs -all -restart -agent -menu -on
+
     - name: Set Local User Password
-      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-    - name: Start Tailscale Service
       run: |
-        Write-Host "Starting Tailscale service..."
-        Start-Service Tailscale
-        if ($LASTEXITCODE -ne 0) {
-          throw "Failed to start Tailscale service."
-        }
+        echo "Setting password for runneradmin..."
+        sudo dscl . -passwd /Users/runneradmin P@ssw0rd!
+
+    - name: Verify Tailscale Installation
+      run: |
+        echo "Verifying Tailscale installation..."
+        tailscale status
+        if [ $? -ne 0 ]; then
+          echo "Tailscale is not installed correctly."
+          exit 1
+        fi
+        echo "Tailscale is installed successfully."
+
+    - name: Check Tailscale Logs
+      run: |
+        echo "Checking Tailscale logs..."
+        sudo cat /var/log/tailscaled.log
