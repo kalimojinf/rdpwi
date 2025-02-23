@@ -10,24 +10,16 @@ jobs:
     steps:
     - name: Download Tailscale
       run: |
-        $url = "https://tailscale.com/download/windows"
-        $output = "tailscale.zip"
+        $url = "https://pkgs.tailscale.com/stable/tailscale-setup-full-1.80.2.exe"
+        $output = "tailscale-setup-full-1.80.2.exe"
         Write-Host "Downloading Tailscale from $url..."
         Invoke-WebRequest -Uri $url -OutFile $output
         if (-Not (Test-Path $output)) {
-          throw "Failed to download Tailscale ZIP package."
+          throw "Failed to download Tailscale installer."
         }
-    - name: Extract Tailscale
-      run: |
-        $zipPath = "tailscale.zip"
-        if (-Not (Test-Path $zipPath)) {
-          throw "Tailscale ZIP package not found."
-        }
-        Write-Host "Extracting Tailscale..."
-        Expand-Archive $zipPath -DestinationPath .
     - name: Install Tailscale
       run: |
-        $installerPath = "tailscale-installer.exe"
+        $installerPath = "tailscale-setup-full-1.80.2.exe"
         if (-Not (Test-Path $installerPath)) {
           throw "Tailscale installer not found."
         }
