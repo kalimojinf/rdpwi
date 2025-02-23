@@ -24,8 +24,11 @@ jobs:
           throw "Tailscale installer not found."
         }
         Write-Host "Running Tailscale installation..."
-        Start-Process -FilePath $installerPath -ArgumentList "/S" -Wait
+        $logFile = "tailscale-install.log"
+        Start-Process -FilePath $installerPath -ArgumentList "/S /L=$logFile" -Wait
         if ($LASTEXITCODE -ne 0) {
+          Write-Host "Tailscale installation failed. Checking log file for details..."
+          Get-Content $logFile
           throw "Tailscale installation failed."
         }
     - name: Auth Tailscale
