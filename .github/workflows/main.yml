@@ -17,6 +17,8 @@ jobs:
         if (-Not (Test-Path $output)) {
           throw "Failed to download Tailscale installer."
         }
+        Write-Host "Downloaded Tailscale installer successfully."
+        Get-ChildItem -Path .
     - name: Install Tailscale
       run: |
         $installerPath = "tailscale-setup-full-1.80.2.exe"
@@ -42,6 +44,7 @@ jobs:
         if (-Not (Get-Command tailscale -ErrorAction SilentlyContinue)) {
           throw "Tailscale is not installed correctly."
         }
+        Write-Host "Tailscale is installed successfully."
     - name: Auth Tailscale
       run: |
         $authKey = $Env:TAILSCALE_AUTH_KEY
