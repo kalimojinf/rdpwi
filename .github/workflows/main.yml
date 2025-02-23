@@ -23,7 +23,7 @@ jobs:
 
     - name: Install Tailscale
       run: |
-        installer -pkg Tailscale.pkg -target /
+        sudo installer -pkg Tailscale.pkg -target /
 
     - name: Auth Tailscale
       run: |
@@ -44,7 +44,6 @@ jobs:
         sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -allowAccessFor -allUsers -privs -all -restart -agent -menu -on
         sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -firewall -on
         sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -firewall -add -ports -TCP 5900
-        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -configure -access -on -users runneradmin -privs -all -restart -agent -menu -on
 
     - name: Set Local User Password
       run: |
