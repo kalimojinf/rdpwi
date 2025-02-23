@@ -33,7 +33,7 @@ jobs:
     - name: Add Tailscale to PATH
       run: |
         echo "Adding Tailscale to PATH..."
-        export PATH="/Library/Application Support/Tailscale:$PATH"
+        export PATH="/Applications/Tailscale.app/Contents/MacOS:$PATH"
         echo "PATH: $PATH"
 
     - name: Verify Tailscale Installation
