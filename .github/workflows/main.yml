@@ -24,6 +24,27 @@ jobs:
     - name: Install Tailscale
       run: |
         sudo installer -pkg Tailscale.pkg -target /
+        if [ $? -ne 0 ]; then
+          echo "Tailscale installation failed."
+          exit 1
+        fi
+        echo "Tailscale installed successfully."
+
+    - name: Add Tailscale to PATH
+      run: |
+        echo "Adding Tailscale to PATH..."
+        export PATH="/Library/Application Support/Tailscale:$PATH"
+        echo "PATH: $PATH"
+
+    - name: Verify Tailscale Installation
+      run: |
+        echo "Verifying Tailscale installation..."
+        which tailscale
+        if [ $? -ne 0 ]; then
+          echo "Tailscale is not installed correctly."
+          exit 1
+        fi
+        echo "Tailscale is installed successfully."
 
     - name: Auth Tailscale
       run: |
@@ -50,17 +71,7 @@ jobs:
         echo "Setting password for runneradmin..."
         sudo dscl . -passwd /Users/runneradmin P@ssw0rd!
 
-    - name: Verify Tailscale Installation
+    - name: Check Tailscale Status
       run: |
-        echo "Verifying Tailscale installation..."
-        tailscale status
-        if [ $? -ne 0 ]; then
-          echo "Tailscale is not installed correctly."
-          exit 1
-        fi
-        echo "Tailscale is installed successfully."
-
-    - name: Check Tailscale Logs
-      run: |
-        echo "Checking Tailscale logs..."
-        sudo cat /var/log/tailscaled.log
+        echo "Checking Tailscale status..."
+        sudo tailscale status
