@@ -1,0 +1,25 @@
+name: CI
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - name: Download Tailscale
+      run: Invoke-WebRequest https://pkgs.tailscale.com/stable/tailscale-windows-amd64.msi -OutFile tailscale.msi
+    - name: Install Tailscale
+      run: msiexec /i tailscale.msi /quiet
+    - name: Auth Tailscale
+      run: tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
+      env:
+        TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+    - name: Enable TS
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+    - name: Start Tailscale Service
+      run: Start-Service Tailscale
