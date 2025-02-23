@@ -10,14 +10,40 @@ jobs:
     steps:
     - name: Download Tailscale
       run: |
-        $url = "https://pkgs.tailscale.com/stable/${{ secrets.TAILSCALE_AUTH_KEY }}?format=msi"
-        Invoke-WebRequest $url -OutFile tailscale.msi
-      env:
-        TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+        $url = "https://tailscale.com/download/windows"
+        $output = "tailscale.zip"
+        Write-Host "Downloading Tailscale from $url..."
+        Invoke-WebRequest -Uri $url -OutFile $output
+        if (-Not (Test-Path $output)) {
+          throw "Failed to download Tailscale ZIP package."
+        }
+    - name: Extract Tailscale
+      run: |
+        $zipPath = "tailscale.zip"
+        if (-Not (Test-Path $zipPath)) {
+          throw "Tailscale ZIP package not found."
+        }
+        Write-Host "Extracting Tailscale..."
+        Expand-Archive $zipPath -DestinationPath .
     - name: Install Tailscale
-      run: msiexec /i tailscale.msi /quiet
+      run: |
+        $installerPath = "tailscale-installer.exe"
+        if (-Not (Test-Path $installerPath)) {
+          throw "Tailscale installer not found."
+        }
+        Write-Host "Running Tailscale installation..."
+        Start-Process -FilePath $installerPath -ArgumentList "/S" -Wait
+        if ($LASTEXITCODE -ne 0) {
+          throw "Tailscale installation failed."
+        }
     - name: Auth Tailscale
-      run: tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
+      run: |
+        $authKey = $Env:TAILSCALE_AUTH_KEY
+        Write-Host "Authenticating Tailscale with key: $authKey..."
+        tailscale up --authkey=$authKey
+        if ($LASTEXITCODE -ne 0) {
+          throw "Tailscale authentication failed."
+        }
       env:
         TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
     - name: Enable Remote Desktop
@@ -27,3 +53,10 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
     - name: Set Local User Password
       run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+    - name: Start Tailscale Service
+      run: |
+        Write-Host "Starting Tailscale service..."
+        Start-Service Tailscale
+        if ($LASTEXITCODE -ne 0) {
+          throw "Failed to start Tailscale service."
+        }
